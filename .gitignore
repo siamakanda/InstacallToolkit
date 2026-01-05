@@ -1,0 +1,18 @@
+# Python environment and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Data Files (Ignored as requested)
+*.csv
+*.xlsx
+*.xls
+*.tsv
+
+# Logs and system files
+*.log
+.DS_Store
+.env

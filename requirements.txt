@@ -1,0 +1,5 @@
+aiohttp==3.9.1
+lxml==4.9.4
+# Optional: cchardet and aiodns help aiohttp run even faster
+cchardet==2.1.7
+aiodns==3.1.1
