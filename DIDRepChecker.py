@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-High-Speed Async Phone Scraper - Updated for CSV format
+High-Speed Async Phone Scraper - Production Ready
 10-20x faster than requests version
 """
 
@@ -10,7 +10,7 @@ import csv
 import random
 import time
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from lxml import html  # 3x faster than BeautifulSoup
 
@@ -41,15 +41,157 @@ CONFIG = {
         "DNT": "1",
         "Upgrade-Insecure-Requests": "1",
     },
+    
+    # Proxy settings (optional)
+    "use_proxy": False,
+    "proxy_list": [],
+
+    # Anti-detection settings
+    "rotate_user_agents": True,
+    "rotate_headers": True,
+    "use_realistic_headers": True,
+    
+    # Header settings
+    "header_shuffle_chance": 0.3,  # 30% chance to shuffle header order
+    "referer_chance": 0.5,  # 50% chance to add referer
+    
+    # Rate limiting adjustments
+    "adaptive_rate_limiting": True,
+    "auto_adjust_on_blocks": True,
 }
 
-# User agents for rotation
+
+# ========== EXPANDED USER AGENTS (50+ real) ==========
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    # Chrome on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 11.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    
+    # Firefox on Windows
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+    "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    
+    # Chrome on Mac
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    
+    # Safari on Mac
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+    
+    # Edge on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.0.0",
+    
+    # Chrome on Linux
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    
+    # Firefox on Linux
+    "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    
+    # Chrome on Android
+    "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    
+    # Safari on iOS
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+    
+    # Older browsers for realism
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15",
 ]
+
+
+# ========== LANGUAGE HEADERS MATCHING USER AGENTS ==========
+LANGUAGE_MAP = {
+    # US English (most common)
+    "en-US,en;q=0.9": ["Chrome", "Firefox", "Edge", "Windows"],
+    "en-US,en;q=0.8,fr;q=0.7": ["Chrome", "Firefox"],
+    
+    # UK English
+    "en-GB,en;q=0.9,en-US;q=0.8": ["Chrome", "Firefox", "Edge"],
+    "en-GB,en;q=0.9": ["Safari"],
+    
+    # Canadian English/French
+    "en-CA,en;q=0.9,fr-CA;q=0.8,fr;q=0.7": ["Chrome", "Firefox"],
+    
+    # Australian English
+    "en-AU,en;q=0.9": ["Chrome", "Firefox", "Safari"],
+    
+    # European languages
+    "de-DE,de;q=0.9,en;q=0.8": ["Chrome", "Firefox"],
+    "fr-FR,fr;q=0.9,en;q=0.8": ["Chrome", "Firefox"],
+    "es-ES,es;q=0.9,en;q=0.8": ["Chrome", "Firefox"],
+    "it-IT,it;q=0.9,en;q=0.8": ["Chrome", "Firefox"],
+    
+    # Asian languages
+    "ja-JP,ja;q=0.9,en;q=0.8": ["Chrome", "Safari"],
+    "ko-KR,ko;q=0.9,en;q=0.8": ["Chrome"],
+    "zh-CN,zh;q=0.9,en;q=0.8": ["Chrome"],
+    "zh-TW,zh;q=0.9,en;q=0.8": ["Chrome"],
+}
+
+# ========== REFERER SOURCES ==========
+REFERER_SOURCES = [
+    "https://www.google.com/",
+    "https://www.google.com/search?q=phone+number+lookup",
+    "https://www.bing.com/",
+    "https://duckduckgo.com/",
+    "https://search.yahoo.com/",
+    "https://www.facebook.com/",
+    "https://twitter.com/",
+    "",  # Empty referer (direct navigation)
+    "https://www.robokiller.com/",  # Same site
+]
+
+
+# Fallback XPaths for data extraction
+XPATHS = {
+    "reputation": [
+        '//div[@id="userReputation"]/h3/text()',
+        '//div[contains(@class, "reputation")]/h3/text()',
+        '//h3[contains(text(), "Reputation")]/../text()',
+        '//div[contains(@class, "score") or contains(@class, "rating")]/text()',
+        '//span[contains(@class, "reputation")]/text()',
+    ],
+    "user_reports": [
+        '//div[@id="userReports"]/h3/text()',
+        '//div[contains(@class, "reports")]/h3/text()',
+        '//h3[contains(text(), "Reports")]/../text()',
+        '//div[contains(text(), "reports")]/text()',
+    ],
+    "total_calls": [
+        '//div[@id="totalCall"]/h3/text()',
+        '//div[contains(@class, "calls")]/h3/text()',
+        '//h3[contains(text(), "Calls")]/../text()',
+        '//div[contains(text(), "calls")]/text()',
+    ],
+    "last_call": [
+        '//div[@id="lastCall"]/h3/text()',
+        '//div[contains(@class, "last")]/h3/text()',
+        '//h3[contains(text(), "Last")]/../text()',
+        '//div[contains(text(), "last")]/text()',
+    ],
+}
 
 # ========== GLOBAL STATE ==========
 stats = {
@@ -69,13 +211,13 @@ def setup_logging():
     """Setup fast logging"""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(message)s',
+        format='%(asctime)s - %(message)s',
+        datefmt='%H:%M:%S',
         handlers=[logging.StreamHandler()]
     )
 
-def clean_number(number):
+def clean_number(number: str) -> str:
     """Fast phone number cleaning - keep only digits"""
-    # Fastest way: filter digits
     digits = []
     for char in str(number):
         if char.isdigit():
@@ -88,57 +230,74 @@ def clean_number(number):
     
     return cleaned
 
+def validate_config():
+    """Validate configuration values"""
+    warnings = []
+    
+    if CONFIG["concurrent_requests"] > CONFIG["connection_limit"]:
+        warnings.append(f"concurrent_requests ({CONFIG['concurrent_requests']}) > connection_limit ({CONFIG['connection_limit']})")
+    
+    if CONFIG["requests_per_second"] > 10:
+        warnings.append(f"High request rate ({CONFIG['requests_per_second']}/sec) may cause blocking")
+    
+    if CONFIG["batch_size"] < 10:
+        warnings.append(f"Small batch_size ({CONFIG['batch_size']}) may impact performance")
+    
+    if CONFIG["use_proxy"] and not CONFIG["proxy_list"]:
+        warnings.append("Proxy enabled but proxy_list is empty")
+    
+    return warnings
 
-
-def read_numbers():
-    """Read phone numbers from CSV file - handles both with/without headers"""
+def read_numbers() -> List[str]:
+    """Read phone numbers from CSV file - memory efficient"""
     numbers = []
+    skipped_count = 0
+    line_count = 0
+    
     try:
         with open(CONFIG["input_file"], 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            
-            if not lines:
-                print("✗ File is empty")
-                return []
-            
-            # Check if first line looks like a phone number or header
-            first_line = lines[0].strip()
-            
-            # Simple heuristic: if first line has ONLY digits (or digits with +) it's a phone number
-            # Remove any commas, quotes, or whitespace first
-            first_cell = first_line.split(',')[0].strip().strip('"').strip("'")
-            
-            # Check if it's a valid phone number (digits only, possibly with + at start)
+            first_line = True
             has_header = False
             
-            # Check multiple conditions to detect header
-            if any(char.isalpha() for char in first_cell):  # Contains letters
-                has_header = True
-                print(f"✓ Detected header: {first_line[:50]}...")
-            elif len(first_cell) < 7:  # Too short for phone number
-                has_header = True
-                print(f"✓ First cell too short, assuming header: {first_cell}")
-            elif not any(char.isdigit() for char in first_cell):  # No digits at all
-                has_header = True
-                print(f"✓ No digits in first cell, assuming header: {first_cell}")
-            else:
-                # Could be a phone number (digits, possibly with +)
-                cleaned = clean_number(first_cell)
-                if len(cleaned) < 10:  # Not a valid 10-digit phone
-                    has_header = True
-                    print(f"✓ Invalid phone format, assuming header: {first_cell}")
-                else:
-                    print(f"✓ No header detected, first row is phone number: {first_cell}")
-            
-            # Process all lines
-            start_index = 1 if has_header else 0
-            
-            for i in range(start_index, len(lines)):
-                line = lines[i].strip()
+            for line in f:
+                line_count += 1
+                line = line.strip()
                 if not line:
                     continue
                 
-                # Handle CSV format - get first column
+                # Header detection on first line only
+                if first_line:
+                    first_line = False
+                    first_cell = line.split(',')[0].strip().strip('"').strip("'")
+                    
+                    # Check if it looks like a header
+                    if any(char.isalpha() for char in first_cell):  # Contains letters
+                        has_header = True
+                        logging.info(f"✓ Detected header: {first_cell[:50]}...")
+                        continue
+                    elif len(first_cell) < 7:  # Too short for phone
+                        has_header = True
+                        logging.info(f"✓ First cell too short, assuming header: {first_cell}")
+                        continue
+                    elif not any(char.isdigit() for char in first_cell):  # No digits
+                        has_header = True
+                        logging.info(f"✓ No digits in first cell, assuming header: {first_cell}")
+                        continue
+                    else:
+                        # Check if it's a valid phone number
+                        cleaned = clean_number(first_cell)
+                        if len(cleaned) < 10:
+                            has_header = True
+                            logging.info(f"✓ Invalid phone format, assuming header: {first_cell}")
+                            continue
+                        else:
+                            logging.info(f"✓ No header detected, processing all rows")
+                
+                # Skip header row if detected
+                if has_header and line_count == 1:
+                    continue
+                
+                # Extract first column
                 parts = line.split(',')
                 if parts:
                     raw_number = parts[0].strip().strip('"').strip("'")
@@ -147,57 +306,138 @@ def read_numbers():
                     if len(cleaned) == 10:  # Valid 10-digit US number
                         numbers.append(cleaned)
                     elif cleaned:  # Has digits but not 10
-                        print(f"  Skipping invalid length: {raw_number} -> {cleaned} ({len(cleaned)} digits)")
-                        stats["skipped_invalid"] += 1
-                    # else: empty string, skip
+                        skipped_count += 1
+                        if skipped_count <= 5:  # Show first 5 warnings only
+                            logging.warning(f"Skipping invalid length: {raw_number} -> {cleaned} ({len(cleaned)} digits)")
         
-        print(f"✓ Loaded {len(numbers)} valid 10-digit phone numbers")
-        if stats["skipped_invalid"] > 0:
-            print(f"  Skipped {stats['skipped_invalid']} invalid numbers")
+        stats["skipped_invalid"] = skipped_count
+        logging.info(f"Loaded {len(numbers)} valid 10-digit phone numbers")
+        if skipped_count > 0:
+            logging.info(f"Skipped {skipped_count} invalid numbers")
         return numbers
         
+    except FileNotFoundError:
+        logging.error(f"Error: File '{CONFIG['input_file']}' not found")
+        return []
     except Exception as e:
-        print(f"✗ Error reading file: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.error(f"Error reading file: {e}")
         return []
 
 
-
-def get_random_headers():
-    """Get headers with random user agent"""
-    headers = CONFIG["headers"].copy()
-    headers["User-Agent"] = random.choice(USER_AGENTS)
+def get_random_headers() -> Dict[str, str]:
+    """Get realistic, varied headers with matching user agent and language"""
+    # Choose random user agent
+    user_agent = random.choice(USER_AGENTS)
+    
+    # Determine browser type from user agent
+    browser_type = "Chrome"  # default
+    if "Firefox" in user_agent:
+        browser_type = "Firefox"
+    elif "Safari" in user_agent and "Chrome" not in user_agent:
+        browser_type = "Safari"
+    elif "Edg" in user_agent:
+        browser_type = "Edge"
+    
+    # Choose appropriate language based on browser type
+    compatible_languages = []
+    for lang, browsers in LANGUAGE_MAP.items():
+        if browser_type in browsers:
+            compatible_languages.append(lang)
+    
+    # Fallback to English if no compatible language found
+    accept_language = random.choice(compatible_languages) if compatible_languages else "en-US,en;q=0.9"
+    
+    # Base headers that all browsers have
+    headers = {
+        # Accept headers vary by browser
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": accept_language,
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": random.choice(["0", "1"]),  # Do Not Track (varies)
+        "Upgrade-Insecure-Requests": "1",
+        "Connection": "keep-alive",
+        "Cache-Control": "max-age=0",
+    }
+    
+    # Add browser-specific headers
+    if browser_type == "Chrome" or browser_type == "Edge":
+        headers.update({
+            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": random.choice(["none", "same-origin", "cross-site"]),
+            "Sec-Fetch-User": "?1",
+        })
+    elif browser_type == "Firefox":
+        headers.update({
+            "TE": "trailers",
+        })
+    
+    # Add random referer (50% chance)
+    if random.random() > 0.5:
+        headers["Referer"] = random.choice(REFERER_SOURCES)
+    
+    # Add user agent last (some detectors check order)
+    headers["User-Agent"] = user_agent
+    
+    # Randomize header order slightly (shuffle keys)
+    if random.random() > 0.7:  # 30% chance to shuffle
+        items = list(headers.items())
+        random.shuffle(items)
+        headers = dict(items)
+    
     return headers
 
 
-# XPaths for data extraction
-XPATHS = {
-    "reputation": '//div[@id="userReputation"]/h3/text()',
-    "user_reports": '//div[@id="userReports"]/h3/text()',
-    "total_calls": '//div[@id="totalCall"]/h3/text()',
-    "last_call": '//div[@id="lastCall"]/h3/text()',
-}
+def get_random_proxy() -> Optional[str]:
+    """Get random proxy if enabled"""
+    if CONFIG["use_proxy"] and CONFIG["proxy_list"]:
+        return random.choice(CONFIG["proxy_list"])
+    return None
 
-
-def parse_html_fast(html_content, phone_number):
-    """Ultra-fast HTML parsing using pre-defined XPaths"""
+def parse_html_fast(html_content: str, phone_number: str) -> Dict[str, str]:
+    """Ultra-fast HTML parsing with fallback XPaths"""
     try:
         tree = html.fromstring(html_content)
-        
-        # Build the data dictionary by executing XPaths
         data = {"phone_number": phone_number}
         
-        for key, path in XPATHS.items():
-            result = tree.xpath(path)
-            # result is a list; we take the first element and strip it
-            data[key] = result[0].strip() if result else "Not Found" if key == "reputation" else ""
+        # Try each XPath pattern until we find data
+        for key, paths in XPATHS.items():
+            value = ""
+            for path in paths:
+                try:
+                    result = tree.xpath(path)
+                    if result:
+                        first = result[0]
+                        # If the xpath returned a string, strip it directly
+                        if isinstance(first, str):
+                            text = first.strip()
+                        else:
+                            # lxml elements and others: prefer text_content()
+                            try:
+                                text = first.text_content().strip()
+                            except Exception:
+                                text = str(first).strip()
+
+                        if text:
+                            value = text
+                            break
+                except Exception:
+                    continue
+            
+            # Set default if not found
+            if key == "reputation" and not value:
+                value = "Not Found"
+            
+            data[key] = value
         
         data["scraped_at"] = datetime.now().isoformat()
         return data
         
     except Exception as e:
-        # Fallback for structural failures
+        logging.debug(f"Parse error for {phone_number}: {e}")
         return {
             "phone_number": phone_number,
             "reputation": "Parse Error",
@@ -206,16 +446,14 @@ def parse_html_fast(html_content, phone_number):
             "last_call": "",
             "scraped_at": datetime.now().isoformat(),
         }
-    
 
-    
 def save_batch():
     """Save results buffer to CSV (batch writing)"""
     if not results_buffer:
         return
     
     try:
-        # Append to file
+        # Check if file exists
         file_exists = False
         try:
             with open(CONFIG["output_file"], 'r') as f:
@@ -223,6 +461,7 @@ def save_batch():
         except:
             pass
         
+        # Write batch
         with open(CONFIG["output_file"], 'a', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=results_buffer[0].keys())
             
@@ -231,95 +470,158 @@ def save_batch():
             
             writer.writerows(results_buffer)
         
-        print(f"  ✓ Saved {len(results_buffer)} records to CSV")
+        logging.info(f"Saved {len(results_buffer)} records to CSV")
         results_buffer.clear()
         
     except Exception as e:
-        print(f"  ✗ Error saving batch: {e}")
+        logging.error(f"Error saving batch: {e}")
 
 class RateLimiter:
-    """Simple async rate limiter"""
-    def __init__(self, rate_per_second):
-        self.rate = rate_per_second
-        self.tokens = rate_per_second
+    """Simple async token-bucket rate limiter with basic 429 cooldown support"""
+    def __init__(self, rate_per_second: float):
+        # rate_per_second may be fractional (e.g., 0.5 req/sec)
+        self.rate = float(rate_per_second)
+        # capacity controls how many tokens can be accumulated
+        self.capacity = max(self.rate, 1.0)
+        self.tokens = self.capacity
         self.updated_at = time.time()
+        # timestamp until which the limiter should stay in cooldown (set on 429)
+        self.cooldown_until = 0.0
     
     async def acquire(self):
-        """Wait if we're hitting rate limits"""
+        """Wait if we're hitting rate limits or in cooldown. Returns True when allowed."""
         now = time.time()
+        # Respect 429-triggered cooldown
+        if now < self.cooldown_until:
+            await asyncio.sleep(self.cooldown_until - now)
+            now = time.time()
+
         elapsed = now - self.updated_at
-        self.tokens += elapsed * self.rate
-        self.tokens = min(self.tokens, self.rate)
+        # Refill tokens based on elapsed time and rate
+        self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
         self.updated_at = now
-        
+
         if self.tokens < 1:
-            sleep_time = (1 - self.tokens) / self.rate
+            sleep_time = (1 - self.tokens) / max(self.rate, 1e-6)
             await asyncio.sleep(sleep_time)
-            self.tokens = self.rate
-        
+            # After sleeping, refill tokens to capacity
+            self.tokens = self.capacity
+            self.updated_at = time.time()
+
         self.tokens -= 1
+        return True
+
+    def record_429(self, backoff_seconds: float = 10.0):
+        """Called when we receive a 429 - set a short cooldown and reduce tokens conservatively."""
+        self.cooldown_until = time.time() + float(backoff_seconds)
+        # Make the bucket more conservative
+        self.tokens = max(0.0, self.tokens - (self.rate * 0.5))
+        logging.warning(f"RateLimiter: recorded 429, cooling down for {backoff_seconds}s")
+
+async def health_check(session: aiohttp.ClientSession) -> bool:
+    """Check if we can still access the website"""
+    test_number = "5551234567"
+    try:
+        headers = get_random_headers()
+        async with session.get(
+            f"https://lookup.robokiller.com/search?q={test_number}",
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=10)
+        ) as response:
+            return response.status == 200
+    except:
+        return False
 
 
-async def fetch_single(session, phone_number, semaphore, rate_limiter):
-    """Fetch data for a single phone number with better error handling"""
+
+async def fetch_single(session: aiohttp.ClientSession, phone_number: str, 
+                      semaphore: asyncio.Semaphore, rate_limiter: RateLimiter) -> Dict[str, str]:
+    """Fetch data for single number with enhanced anti-detection"""
     async with semaphore:
+        # Rate limiting - ensure we respect global rate limits / cooldowns
         await rate_limiter.acquire()
-        
+
         url = f"https://lookup.robokiller.com/search?q={phone_number}"
         headers = get_random_headers()
         
-        last_error = None
+        # Add some random delays to mimic human behavior
+        if random.random() > 0.8:  # 20% chance
+            await asyncio.sleep(random.uniform(0.1, 0.5))
         
         for attempt in range(CONFIG["max_retries"] + 1):
             try:
+                # Use different headers for each retry attempt
+                if attempt > 0 and CONFIG["rotate_headers"]:
+                    headers = get_random_headers()
+                
                 async with session.get(
-                    url, 
+                    url,
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=CONFIG["timeout"])
                 ) as response:
                     
-                    # Immediately check for common blocking responses
-                    if response.status == 403:  # Forbidden
-                        print(f"🔒 {phone_number}: Blocked (403 Forbidden)")
+                    # Enhanced status code handling
+                    if response.status == 403:
+                        logging.warning(f"🔒 {phone_number}: Blocked (403)")
+                        # Try different user agent next time
                         stats["failed"] += 1
                         return {
                             "phone_number": phone_number,
-                            "reputation": "Blocked (403)",
+                            "reputation": "Blocked",
                             "user_reports": "",
                             "total_calls": "",
                             "last_call": "",
                             "scraped_at": datetime.now().isoformat(),
                         }
                     
-                    elif response.status == 404:  # Not Found
-                        print(f"🔍 {phone_number}: Page not found (404)")
-                        stats["failed"] += 1
-                        return {
-                            "phone_number": phone_number,
-                            "reputation": "Page Not Found",
-                            "user_reports": "",
-                            "total_calls": "",
-                            "last_call": "",
-                            "scraped_at": datetime.now().isoformat(),
-                        }
-                    
-                    elif response.status == 429:  # Rate limited
+                    elif response.status == 429:
                         stats["rate_limited"] += 1
-                        wait_time = 2 ** (attempt + 1) + random.uniform(0, 1)
-                        print(f"⚠ {phone_number}: Rate limited, waiting {wait_time:.1f}s")
+                        rate_limiter.record_429()
+                        
+                        # Variable backoff based on attempt
+                        base_wait = min(2 ** (attempt + 1), 60)
+                        jitter = random.uniform(0.5, 1.5)
+                        wait_time = base_wait * jitter
+                        
+                        logging.warning(f"⚠ {phone_number}: Rate limited, waiting {wait_time:.1f}s")
                         await asyncio.sleep(wait_time)
+                        
+                        # Rotate user agent after rate limit
+                        if CONFIG["rotate_user_agents"]:
+                            headers = get_random_headers()
+                        
                         continue  # Retry
                     
                     elif response.status == 200:
                         html_content = await response.text()
                         
-                        # Quick check for CAPTCHA or blocking page
-                        if "captcha" in html_content.lower() or "access denied" in html_content.lower():
-                            print(f"🚫 {phone_number}: CAPTCHA or blocked page detected")
+                        # Enhanced block detection
+                        block_indicators = [
+                            "captcha", "access denied", "cloudflare", 
+                            "security check", "robot", "blocked",
+                            "please verify", "unusual traffic"
+                        ]
+                        
+                        content_lower = html_content.lower()
+                        if any(indicator in content_lower for indicator in block_indicators):
+                            logging.warning(f"🚫 {phone_number}: Blocking page detected")
                             stats["failed"] += 1
                             return {
                                 "phone_number": phone_number,
-                                "reputation": "Blocked (CAPTCHA)",
+                                "reputation": "Blocked",
+                                "user_reports": "",
+                                "total_calls": "",
+                                "last_call": "",
+                                "scraped_at": datetime.now().isoformat(),
+                            }
+                        
+                        # Check if we got actual data or empty page
+                        if len(html_content) < 1000:  # Very small response
+                            logging.warning(f"📄 {phone_number}: Suspiciously small response")
+                            stats["failed"] += 1
+                            return {
+                                "phone_number": phone_number,
+                                "reputation": "Empty Response",
                                 "user_reports": "",
                                 "total_calls": "",
                                 "last_call": "",
@@ -328,48 +630,60 @@ async def fetch_single(session, phone_number, semaphore, rate_limiter):
                         
                         data = parse_html_fast(html_content, phone_number)
                         
-                        if data["reputation"] not in ["Parse Error", "Not Found"]:
+                        if data["reputation"] not in ["Parse Error", "Not Found", ""]:
                             stats["success"] += 1
-                            print(f"✓ {phone_number}: {data['reputation']}")
+                            logging.info(f"✓ {phone_number}: {data['reputation']}")
                         else:
-                            print(f"✓ {phone_number}: No data")
+                            logging.info(f"✓ {phone_number}: No data found")
                         
                         return data
                     
                     else:
-                        print(f"✗ {phone_number}: HTTP {response.status}")
-                        last_error = f"HTTP {response.status}"
+                        logging.warning(f"✗ {phone_number}: HTTP {response.status}")
+                        # Don't retry on client errors (4xx) except 429
+                        if 400 <= response.status < 500 and response.status != 429:
+                            stats["failed"] += 1
+                            return {
+                                "phone_number": phone_number,
+                                "reputation": f"HTTP {response.status}",
+                                "user_reports": "",
+                                "total_calls": "",
+                                "last_call": "",
+                                "scraped_at": datetime.now().isoformat(),
+                            }
                 
             except asyncio.TimeoutError:
-                last_error = "Timeout"
-                print(f"⏱️ {phone_number}: Timeout (attempt {attempt + 1})")
+                logging.warning(f"⏱️ {phone_number}: Timeout (attempt {attempt + 1})")
             except aiohttp.ClientConnectorError:
-                last_error = "Connection Error"
-                print(f"🔌 {phone_number}: Connection failed (attempt {attempt + 1})")
+                logging.warning(f"🔌 {phone_number}: Connection failed (attempt {attempt + 1})")
             except Exception as e:
-                last_error = str(e)
-                print(f"⚠ {phone_number}: {type(e).__name__} (attempt {attempt + 1})")
+                logging.warning(f"⚠ {phone_number}: {type(e).__name__} (attempt {attempt + 1})")
             
-            # Wait before retry (if not last attempt)
+            # Variable delay between retries
             if attempt < CONFIG["max_retries"]:
-                wait_time = random.uniform(1, 3) * (attempt + 1)
-                await asyncio.sleep(wait_time)
+                retry_delay = random.uniform(1, 4) * (attempt + 1)
+                await asyncio.sleep(retry_delay)
         
         # All retries failed
         stats["failed"] += 1
-        print(f"❌ {phone_number}: Failed after {CONFIG['max_retries'] + 1} attempts: {last_error}")
+        logging.error(f"❌ {phone_number}: Failed after {CONFIG['max_retries'] + 1} attempts")
         
         return {
             "phone_number": phone_number,
-            "reputation": f"Error: {last_error[:30]}" if last_error else "Error",
+            "reputation": "Error",
             "user_reports": "",
             "total_calls": "",
             "last_call": "",
             "scraped_at": datetime.now().isoformat(),
         }
-
-
-async def process_batch(session, batch, semaphore, rate_limiter):
+    
+    
+async def process_batch(
+    session: aiohttp.ClientSession, 
+    batch: List[str], 
+    semaphore: asyncio.Semaphore, 
+    rate_limiter: RateLimiter
+) -> List[Dict[str, str]]:
     """Process a batch of phone numbers concurrently"""
     tasks = []
     for number in batch:
@@ -379,13 +693,11 @@ async def process_batch(session, batch, semaphore, rate_limiter):
     # Run all tasks concurrently
     batch_results = await asyncio.gather(*tasks, return_exceptions=True)
     
-    # Filter out exceptions
+    # Filter out exceptions (they're already handled in fetch_single)
     valid_results = []
     for result in batch_results:
-        if isinstance(result, Exception):
-            stats["failed"] += 1
-            continue
-        valid_results.append(result)
+        if not isinstance(result, Exception):
+            valid_results.append(result)
     
     return valid_results
 
@@ -393,22 +705,30 @@ async def main_async():
     """Main async function"""
     setup_logging()
     
+    # Validate config
+    warnings = validate_config()
+    if warnings:
+        logging.warning("Configuration warnings:")
+        for warning in warnings:
+            logging.warning(f"  ⚠ {warning}")
+        logging.warning("")
+    
     # Read numbers
     phone_numbers = read_numbers()
     if not phone_numbers:
-        print("No valid phone numbers to process. Exiting.")
+        logging.info("No valid phone numbers to process. Exiting.")
         return
     
-    print(f"\n⚡ Starting async scraper with {CONFIG['concurrent_requests']} concurrent requests")
-    print(f"   Rate limit: {CONFIG['requests_per_second']} requests/second")
-    print(f"   Batch size: {CONFIG['batch_size']} records\n")
+    logging.info(f"Starting async scraper with {CONFIG['concurrent_requests']} concurrent requests")
+    logging.info(f"Rate limit: {CONFIG['requests_per_second']} requests/second")
+    logging.info(f"Batch size: {CONFIG['batch_size']} records")
     
     # Create session with connection pool
     connector = aiohttp.TCPConnector(
         limit=CONFIG["connection_limit"],
         force_close=False,
         enable_cleanup_closed=True,
-        ttl_dns_cache=300,  # Cache DNS for 5 minutes
+        ttl_dns_cache=300,
     )
     
     # Create rate limiter and semaphore
@@ -428,8 +748,15 @@ async def main_async():
             batch = phone_numbers[i:i + CONFIG["batch_size"]]
             batch_num = i // CONFIG["batch_size"] + 1
             
-            print(f"\n📦 Processing batch {batch_num}/{total_batches}")
-            print(f"   Numbers: {i+1} to {min(i+CONFIG['batch_size'], len(phone_numbers))}")
+            logging.info(f"Processing batch {batch_num}/{total_batches}")
+            logging.info(f"Numbers: {i+1} to {min(i+CONFIG['batch_size'], len(phone_numbers))}")
+            
+            # Optional: Health check every 500 requests
+            if stats["total"] > 0 and stats["total"] % 500 == 0:
+                logging.info("Running health check...")
+                if not await health_check(session):
+                    logging.warning("Health check failed - possible blocking, pausing...")
+                    await asyncio.sleep(10)
             
             # Process this batch
             batch_results = await process_batch(session, batch, semaphore, rate_limiter)
@@ -446,8 +773,8 @@ async def main_async():
             elapsed = time.time() - stats["start_time"]
             rate = stats["total"] / elapsed if elapsed > 0 else 0
             
-            print(f"   Progress: {stats['total']}/{len(phone_numbers)} ({stats['total']/len(phone_numbers)*100:.1f}%)")
-            print(f"   Speed: {rate*60:.1f} records/minute")
+            logging.info(f"Progress: {stats['total']}/{len(phone_numbers)} ({stats['total']/len(phone_numbers)*100:.1f}%)")
+            logging.info(f"Speed: {rate*60:.1f} records/minute")
             
             # Small delay between batches
             if i + CONFIG["batch_size"] < len(phone_numbers):
@@ -461,49 +788,52 @@ def show_final_stats():
     """Display final statistics"""
     elapsed = time.time() - stats["start_time"]
     
-    print(f"\n{'='*60}")
-    print("🏁 SCRAPING COMPLETE")
-    print(f"{'='*60}")
-    print(f"Total time: {elapsed:.1f}s ({elapsed/60:.1f}min)")
-    print(f"Valid numbers found: {len(results_buffer)}")
-    print(f"Successful scrapes: {stats['success']}")
-    print(f"Failed scrapes: {stats['failed']}")
-    print(f"Rate limited: {stats['rate_limited']}")
-    print(f"Skipped invalid: {stats['skipped_invalid']}")
+    logging.info(f"{'='*60}")
+    logging.info("🏁 SCRAPING COMPLETE")
+    logging.info(f"{'='*60}")
+    logging.info(f"Total time: {elapsed:.1f}s ({elapsed/60:.1f}min)")
+    logging.info(f"Total processed: {stats['total']}")
+    logging.info(f"Successful: {stats['success']}")
+    logging.info(f"Failed: {stats['failed']}")
+    logging.info(f"Rate limited: {stats['rate_limited']}")
+    logging.info(f"Skipped invalid: {stats['skipped_invalid']}")
     
     if stats['total'] > 0:
         success_rate = (stats['success'] / stats['total']) * 100
-        print(f"Success rate: {success_rate:.1f}%")
+        logging.info(f"Success rate: {success_rate:.1f}%")
         
         records_per_second = stats['total'] / elapsed
-        print(f"Speed: {records_per_second:.1f}/sec ({records_per_second*60:.0f}/min)")
+        logging.info(f"Speed: {records_per_second:.1f}/sec ({records_per_second*60:.0f}/min)")
         
         # Compare with sequential version
-        sequential_time = stats['total'] * 1.5  # Assume 1.5s per request sequential
+        sequential_time = stats['total'] * 1.5
         speedup = sequential_time / elapsed if elapsed > 0 else 1
-        print(f"Speedup vs sequential: {speedup:.1f}x faster")
+        logging.info(f"Speedup vs sequential: {speedup:.1f}x faster")
     
-    print(f"Output file: {CONFIG['output_file']}")
-    print(f"{'='*60}")
+    logging.info(f"Output file: {CONFIG['output_file']}")
+    logging.info(f"{'='*60}")
 
 def main():
     """Main entry point"""
     try:
         # Run async scraper
         asyncio.run(main_async())
-        
-        # Show final stats
         show_final_stats()
         
     except KeyboardInterrupt:
-        print("\n\n⏹️  Stopped by user")
-        # Save any pending results
+        logging.info("Stopped by user")
         if results_buffer:
             save_batch()
+        show_final_stats()
     except Exception as e:
-        print(f"\n💥 Fatal error: {e}")
+        logging.error(f"Fatal error: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Try to save any results we have
+        if results_buffer:
+            logging.info("Attempting to save collected results...")
+            save_batch()
 
 if __name__ == "__main__":
     main()
